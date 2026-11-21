@@ -10,21 +10,23 @@
  *     finds drift.
  *
  * Each command loads only its selected DSM or SRM target and credentials.
+ *
+ * `synology-agent-control mcp` is the exception to the output contract: it
+ * serves the same commands as MCP tools over stdio, where stdout carries only
+ * protocol traffic.
  */
 
-import { loadRuntimeConfig, loadTarget } from "./config.js";
-import { SynoClient, errorMessage } from "./client.js";
+import { errorMessage } from "./client.js";
 import {
   COMMANDS,
   UsageError,
   commandManifest,
   commandUsage,
   parseArgv,
-  requiresConfirmation,
   resolveCommand,
-  selectPlatform,
   validateInvocation,
 } from "./commands.js";
+import { needsConfirmation, runCommand } from "./run.js";
 import { VERSION } from "./version.js";
 
 /** What to emit and with which code. Kept as data so the single exit path can
@@ -58,13 +60,28 @@ function helpText(): string {
     "Every command prints JSON on stdout; progress and errors go to stderr.",
     "Use --verbose to add the Synology API trace to stderr.",
     "Use --target=dsm|srm when a command supports both platforms.",
-    "Use `raw` for any endpoint without a named command."
+    "Use `raw` for any endpoint without a named command.",
+    "",
+    "Run `synology-agent-control mcp [--read-only]` to serve these commands as MCP tools over stdio."
   );
   return lines.join("\n");
 }
 
-async function main(): Promise<Outcome> {
+async function main(): Promise<Outcome | null> {
   const raw = process.argv.slice(2);
+  if (raw[0] === "mcp") {
+    const rest = raw.slice(1);
+    const unknown = rest.find((tok) => tok !== "--read-only");
+    if (unknown !== undefined) {
+      throw new UsageError(`unknown argument "${unknown}" for "mcp"; expected only --read-only`);
+    }
+    // Loaded on demand so an ordinary command never pays for the MCP SDK.
+    const { serveStdio } = await import("./mcp.js");
+    await serveStdio({ readOnly: rest.includes("--read-only") });
+    // The transport owns stdin and stdout from here; the process ends when the
+    // client closes the stream.
+    return null;
+  }
   if (raw.length === 0 || raw[0] === "help" || raw[0] === "--help" || raw[0] === "-h") {
     const json = raw.includes("--json");
     return {
@@ -86,7 +103,7 @@ async function main(): Promise<Outcome> {
   const { command, args } = resolved;
   validateInvocation(command, args, flags);
 
-  if (requiresConfirmation(command, flags, args) && !(flags.yes === true || flags.yes === "true")) {
+  if (needsConfirmation(command, args, flags)) {
     return {
       code: 2,
       stderr:
@@ -95,26 +112,7 @@ async function main(): Promise<Outcome> {
     };
   }
 
-  const runtime = loadRuntimeConfig();
-  const verbose = flags.verbose === true || flags.verbose === "true";
-  const platform = selectPlatform(command, flags);
-  let target;
-  try {
-    target = loadTarget(platform);
-  } catch (err) {
-    if (err instanceof Error && err.message.startsWith("Missing required env:")) {
-      throw new UsageError(err.message);
-    }
-    throw err;
-  }
-  // A target that opts out of certificate checks turns them off process-wide.
-  // That covers only this target: every command talks to exactly one. A
-  // per-fetch undici dispatcher was tried and reverted: it interacted badly
-  // with Node's built-in fetch (intermittent "fetch failed" and silently-empty
-  // responses).
-  if (target.tlsSkipVerify) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-  const client = new SynoClient(target, { verbose });
-  const result = await command.run({ runtime, target, client, args, flags });
+  const result = await runCommand(command, args, flags);
   return { code: command.exitCode?.(result) ?? 0, stdout: JSON.stringify(result, null, 2) };
 }
 
@@ -140,7 +138,9 @@ function finish(outcome: Outcome): void {
 }
 
 main()
-  .then(finish)
+  .then((outcome) => {
+    if (outcome) finish(outcome);
+  })
   .catch((err) => {
     // A malformed invocation is exit 2 (the documented usage code); anything else
     // is a runtime or API failure at exit 1. Both flush stderr before exiting.

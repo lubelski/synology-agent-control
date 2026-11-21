@@ -1,6 +1,6 @@
 # synology-agent-control
 
-This is a fork of [`pvulgaris/synology-cli`](https://github.com/pvulgaris/synology-cli) by Peter Vulgaris. The design and nearly all of the code are his. The fork renames the tool from `syno` to `synology-agent-control`. It is not affiliated with or endorsed by the upstream project.
+This is a fork of [`pvulgaris/synology-cli`](https://github.com/pvulgaris/synology-cli) by Peter Vulgaris. The design and nearly all of the code are his. The fork renames the tool from `syno` to `synology-agent-control` and adds an MCP server. It is not affiliated with or endorsed by the upstream project.
 
 `synology-agent-control` is an agent-oriented command-line tool for Synology DSM and SRM devices. It provides curated commands for common operations and a target-aware `raw` escape hatch for the rest.
 
@@ -53,6 +53,57 @@ agents. The registry is the command inventory; it is not duplicated here.
 Each command runs against one device. Nothing fans out across both, so a
 question spanning the NAS and the router is answered by composing commands and
 merging their JSON.
+
+## MCP server
+
+`synology-agent-control mcp` serves the same commands as Model Context Protocol tools over stdio, so an agent can call them without a shell.
+
+- There is one tool per command, named from the command path in snake_case. `containers logs` is `containers_logs` and `shares snapshot-config` is `shares_snapshot_config`.
+- Tools are generated from the command registry and run the same handlers as the CLI. A tool returns the JSON the CLI prints.
+- A tool that changes device state takes `confirm: true`, the counterpart of `--yes`, and refuses to run without it. `raw` needs it under the same rule as the CLI.
+- Writes go to the same audit log.
+- A missing variable or a failed login comes back as a tool error. The server starts and lists its tools with no target configured.
+- The server runs one call at a time.
+
+### Read-only mode
+
+`synology-agent-control mcp --read-only` registers no tool that changes device state, and `raw` refuses POST and any method that is not a known read. The DSM account is an administrator, so every write tool is one confirmation away from a real change. Start with `--read-only` and drop it only for a session that needs to write.
+
+Read-only describes what the tools ask of the device. It does not reduce what the account can do. `security_scan` stays available, and it starts a Security Advisor scan on the device.
+
+### Claude Code
+
+Register the server for one project:
+
+```sh
+claude mcp add --scope project \
+  --env DSM_BASE_URL=https://nas.example.test:5001 \
+  --env DSM_USER=syno-agent \
+  --env DSM_PASSWORD_FILE=/path/to/dsm-password \
+  --env DSM_TOTP_SECRET_FILE=/path/to/dsm-totp \
+  synology-agent-control -- synology-agent-control mcp --read-only
+```
+
+That writes a `.mcp.json` like this one:
+
+```json
+{
+  "mcpServers": {
+    "synology-agent-control": {
+      "command": "synology-agent-control",
+      "args": ["mcp", "--read-only"],
+      "env": {
+        "DSM_BASE_URL": "https://nas.example.test:5001",
+        "DSM_USER": "syno-agent",
+        "DSM_PASSWORD_FILE": "/path/to/dsm-password",
+        "DSM_TOTP_SECRET_FILE": "/path/to/dsm-totp"
+      }
+    }
+  }
+}
+```
+
+The `*_FILE` forms keep the secrets out of the file, which matters because a project `.mcp.json` is usually committed. To pass the values from your shell instead, reference them as `"DSM_PASSWORD": "${DSM_PASSWORD}"` and `"DSM_TOTP_SECRET": "${DSM_TOTP_SECRET}"`. Claude Code expands them when it starts the server. Add the `SRM_*` variables the same way to enable the router tools.
 
 ## Writes require `--yes`
 
