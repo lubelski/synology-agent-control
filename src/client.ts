@@ -200,7 +200,7 @@ export class SynoClient {
 
   /**
    * Acquire a SID. With a session file configured this runs under a cross-process
-   * lock, because a login is the one operation two concurrent `syno` invocations
+   * lock, because a login is the one operation two concurrent `synology-agent-control` invocations
    * must not perform at the same time: DSM rejects a second login reusing the
    * current 30-second TOTP code with error 404.
    *
@@ -255,7 +255,7 @@ export class SynoClient {
       // Surface the full auth error payload (matches callOnce's data-call logging);
       // login failures are otherwise opaque (just a code) and hard to diagnose.
       console.error(
-        `[syno:${this.cfg.platform}] login ✗ code=${code}`,
+        `[synology-agent-control:${this.cfg.platform}] login ✗ code=${code}`,
         JSON.stringify(body.error ?? {})
       );
       throw new SynologyApiError(
@@ -343,7 +343,7 @@ export class SynoClient {
       });
       const verb = opts.post ? "POST" : "GET";
       console.error(
-        `[syno:${this.cfg.platform}] → ${verb} ${opts.api}.${opts.method}`,
+        `[synology-agent-control:${this.cfg.platform}] → ${verb} ${opts.api}.${opts.method}`,
         safeParams
       );
     }
@@ -366,7 +366,7 @@ export class SynoClient {
       // Log the whole raw error payload — most DSM failure modes only make
       // sense when you can see the full response, not just the code.
       console.error(
-        `[syno:${this.cfg.platform}] ✗ ${opts.api}.${opts.method} code=${code}`,
+        `[synology-agent-control:${this.cfg.platform}] ✗ ${opts.api}.${opts.method} code=${code}`,
         opts.sensitiveResponse ? JSON.stringify({ code }) : JSON.stringify(json.error ?? {})
       );
       const safeErrors = opts.sensitiveResponse ? undefined : errs;
@@ -383,9 +383,9 @@ export class SynoClient {
       if (process.env.DEBUG_DSM_RESPONSES === "1" && !opts.sensitiveResponse) {
         const blob = JSON.stringify(json.data ?? {});
         const trimmed = blob.length > 1500 ? blob.slice(0, 1500) + "…" : blob;
-        console.error(`[syno:${this.cfg.platform}] ✓ ${opts.api}.${opts.method}`, trimmed);
+        console.error(`[synology-agent-control:${this.cfg.platform}] ✓ ${opts.api}.${opts.method}`, trimmed);
       } else {
-        console.error(`[syno:${this.cfg.platform}] ✓ ${opts.api}.${opts.method}`);
+        console.error(`[synology-agent-control:${this.cfg.platform}] ✓ ${opts.api}.${opts.method}`);
       }
     }
     return (json.data ?? ({} as T));

@@ -48,30 +48,30 @@ For an SRM target, use the same pattern with the `SRM_` prefix, plus `SRM_BASE_U
 ## 3. Install
 
 ```sh
-npm install -g .     # puts `syno` on your PATH
-syno --help
+npm install -g .     # puts `synology-agent-control` on your PATH
+synology-agent-control --help
 ```
 
 ## 4. Verify
 
 ```sh
-syno status
-syno router update-check
+synology-agent-control status
+synology-agent-control router update-check
 ```
 
-Run the command for each configured target. `syno status` needs only DSM configuration; `syno router update-check` needs only SRM configuration. If login fails, the device answers with a code rather than a message: 400 is a bad password, 404 is a rejected 2FA code (usually a wrong or stale TOTP secret), 402 means the account isn't an admin.
+Run the command for each configured target. `synology-agent-control status` needs only DSM configuration; `synology-agent-control router update-check` needs only SRM configuration. If login fails, the device answers with a code rather than a message: 400 is a bad password, 404 is a rejected 2FA code (usually a wrong or stale TOTP secret), 402 means the account isn't an admin.
 
-The first run writes a session file to `~/.local/state/syno/`, so subsequent commands reuse the login instead of burning a TOTP code each time.
+The first run writes a session file to `~/.local/state/synology-agent-control/`, so subsequent commands reuse the login instead of burning a TOTP code each time.
 
 ## 5. Optional: DSM notification email
 
-DSM → Control Panel → Notification → Email. DSM then emails you when packages have updates, which is a useful backstop to `syno packages updates`.
+DSM → Control Panel → Notification → Email. DSM then emails you when packages have updates, which is a useful backstop to `synology-agent-control packages updates`.
 
 ## Uninstall
 
 ```sh
-npm uninstall -g synology-cli
-rm -rf ~/.local/state/syno
+npm uninstall -g synology-agent-control
+rm -rf ~/.local/state/synology-agent-control
 ```
 
 Then delete the DSM user in Control Panel and remove the credentials from wherever you stored them.

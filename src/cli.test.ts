@@ -112,7 +112,7 @@ test("exit: a raw GET-transport mutation without --yes is refused", () => {
 
 test("output: the result goes to stdout, diagnostics to stderr", () => {
   // help is the only NAS-free command that emits a payload; it must land on
-  // stdout so `syno ... | jq` never has to filter stderr noise.
+  // stdout so `synology-agent-control ... | jq` never has to filter stderr noise.
   const r = run(["help"]);
   assert.ok(r.stdout.length > 0);
   assert.equal(r.stderr, "");
@@ -163,12 +163,12 @@ test("SRM-only commands authenticate and run without DSM configuration", async (
       SRM_USER: "agent",
       SRM_PASSWORD: "password",
       SRM_TOTP_SECRET: "JBSWY3DPEHPK3PXP",
-      SRM_SID_CACHE_FILE: join(mkdtempSync(join(tmpdir(), "syno-srm-cli-")), "session.json"),
+      SRM_SID_CACHE_FILE: join(mkdtempSync(join(tmpdir(), "synology-agent-control-srm-cli-")), "session.json"),
     });
     const result = await runAsync(["router", "update-check", "--verbose"], env);
     assert.equal(result.code, 0, result.stderr);
     assert.equal(JSON.parse(result.stdout).current_version, "SRM test");
-    assert.match(result.stderr, /\[syno:srm\] → GET SYNO\.Core\.System\.info/);
+    assert.match(result.stderr, /\[synology-agent-control:srm\] → GET SYNO\.Core\.System\.info/);
     const login = requests.find((request) => request.pathname.endsWith("auth.cgi"));
     assert.equal(login?.searchParams.get("version"), "3");
     assert.equal(requests.some((request) => request.pathname.endsWith("entry.cgi")), true);

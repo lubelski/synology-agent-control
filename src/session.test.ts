@@ -25,7 +25,7 @@ import {
 import { readFileSync } from "node:fs";
 
 function tmpPath(name = "session.json"): string {
-  return join(mkdtempSync(join(tmpdir(), "syno-session-")), name);
+  return join(mkdtempSync(join(tmpdir(), "synology-agent-control-session-")), name);
 }
 
 // ── Persistence ─────────────────────────────────────────────────────────────
@@ -62,9 +62,9 @@ test("session: a pre-identity record fails match, forcing a fresh login", () => 
 });
 
 test("session: default path differs per target+account", () => {
-  const a = defaultSessionPath("syno-cli", "https://nas.local:5001", "claude-mcp");
-  const b = defaultSessionPath("syno-cli", "https://nas.local:5001", "other");
-  const c = defaultSessionPath("syno-cli", "https://other:5001", "claude-mcp");
+  const a = defaultSessionPath("synology-agent-control", "https://nas.local:5001", "claude-mcp");
+  const b = defaultSessionPath("synology-agent-control", "https://nas.local:5001", "other");
+  const c = defaultSessionPath("synology-agent-control", "https://other:5001", "claude-mcp");
   assert.notEqual(a, b);
   assert.notEqual(a, c);
 });

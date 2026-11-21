@@ -33,7 +33,7 @@ const cmd = (name: string): Command => {
 
 /** A CommandContext with a stub client and a throwaway audit dir. */
 function ctx(over: Partial<CommandContext> & { auditDir?: string }): CommandContext {
-  const auditLogDir = over.auditDir ?? mkdtempSync(join(tmpdir(), "syno-audit-"));
+  const auditLogDir = over.auditDir ?? mkdtempSync(join(tmpdir(), "synology-agent-control-audit-"));
   return {
     runtime: { auditLogDir },
     target:
@@ -297,7 +297,7 @@ test("usage: a malformed raw param throws UsageError", async () => {
 // ── raw audit ───────────────────────────────────────────────────────────────
 
 test("raw GET is a read and writes no audit record", async () => {
-  const auditDir = mkdtempSync(join(tmpdir(), "syno-audit-"));
+  const auditDir = mkdtempSync(join(tmpdir(), "synology-agent-control-audit-"));
   await cmd("raw").run(ctx({ auditDir, args: ["SYNO.Core.System", "info"] }));
   await cmd("raw").run(
     ctx({ auditDir, args: ["SYNO.Docker.Container", "stats"] })
@@ -306,7 +306,7 @@ test("raw GET is a read and writes no audit record", async () => {
 });
 
 test("known read-only VMM POST writes no mutation audit record", async () => {
-  const auditDir = mkdtempSync(join(tmpdir(), "syno-audit-"));
+  const auditDir = mkdtempSync(join(tmpdir(), "synology-agent-control-audit-"));
   await cmd("raw").run(
     ctx({
       auditDir,
@@ -336,7 +336,7 @@ test("raw --params-json encodes values for Synology's form parser", async () => 
 });
 
 test("raw GET-transport delete is audited as a write", async () => {
-  const auditDir = mkdtempSync(join(tmpdir(), "syno-audit-"));
+  const auditDir = mkdtempSync(join(tmpdir(), "synology-agent-control-audit-"));
   await cmd("raw").run(
     ctx({
       auditDir,
@@ -349,7 +349,7 @@ test("raw GET-transport delete is audited as a write", async () => {
 });
 
 test("raw --post writes an audit record like a named write", async () => {
-  const auditDir = mkdtempSync(join(tmpdir(), "syno-audit-"));
+  const auditDir = mkdtempSync(join(tmpdir(), "synology-agent-control-audit-"));
   await cmd("raw").run(
     ctx({
       auditDir,
@@ -365,7 +365,7 @@ test("raw --post writes an audit record like a named write", async () => {
 });
 
 test("raw --post returns its response but redacts it from the audit", async () => {
-  const auditDir = mkdtempSync(join(tmpdir(), "syno-audit-"));
+  const auditDir = mkdtempSync(join(tmpdir(), "synology-agent-control-audit-"));
   const secret = "PASSWORD: do-not-audit";
   const client = {
     call: async (opts: { sensitiveResponse?: boolean }) => {
@@ -389,7 +389,7 @@ test("raw --post returns its response but redacts it from the audit", async () =
 });
 
 test("raw --post never writes a secret param value to the audit log", async () => {
-  const auditDir = mkdtempSync(join(tmpdir(), "syno-audit-"));
+  const auditDir = mkdtempSync(join(tmpdir(), "synology-agent-control-audit-"));
   await cmd("raw").run(
     ctx({
       auditDir,

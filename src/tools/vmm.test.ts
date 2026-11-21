@@ -10,7 +10,7 @@ import { SynologyApiError, type SynologyCallOptions } from "../client.js";
 const FAST: VmTiming = { intervalMs: 1, timeoutMs: 50 };
 
 function auditDir() {
-  return mkdtempSync(join(tmpdir(), "syno-vmm-audit-"));
+  return mkdtempSync(join(tmpdir(), "synology-agent-control-vmm-audit-"));
 }
 
 function auditRecords(dir: string): any[] {

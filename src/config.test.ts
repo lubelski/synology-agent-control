@@ -88,11 +88,11 @@ test("runtime configuration does not require a device", () => {
     {
       DSM_BASE_URL: undefined,
       SRM_BASE_URL: undefined,
-      AUDIT_LOG_DIR: "/tmp/syno-audit-test",
+      AUDIT_LOG_DIR: "/tmp/synology-agent-control-audit-test",
     },
     () => {
       const runtime = loadRuntimeConfig();
-      assert.equal(runtime.auditLogDir, "/tmp/syno-audit-test");
+      assert.equal(runtime.auditLogDir, "/tmp/synology-agent-control-audit-test");
     }
   );
 });

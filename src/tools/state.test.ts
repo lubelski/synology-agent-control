@@ -92,7 +92,7 @@ function fakeClient(
   return { call } as unknown as SynoClient;
 }
 
-const runtime = () => ({ auditLogDir: mkdtempSync(join(tmpdir(), "syno-audit-")) });
+const runtime = () => ({ auditLogDir: mkdtempSync(join(tmpdir(), "synology-agent-control-audit-")) });
 const posts = (calls: SynologyCallOptions[]) => calls.filter((c) => c.post);
 
 test("state check: a matching NAS is ok regardless of key and weekday order", async () => {
@@ -310,7 +310,7 @@ test("state apply: time drift is one write of all three fields, as sent live", a
   assert.deepEqual(result.writes.map((f) => [f.subject, f.fix, f.message]), [
     ["time", "api", 'timezone is "Pacific", expected "Eastern", enable_ntp is "manual", expected "ntp", server is "pool.ntp.org", expected "time.google.com"'],
   ]);
-  // The params `syno raw` sent on 2026-09-30, which DSM applied and read back.
+  // The params `synology-agent-control raw` sent on 2026-09-30, which DSM applied and read back.
   assert.deepEqual(posts(calls).map((c) => [`${c.api}.${c.method}`, c.params]), [
     ["SYNO.Core.Region.NTP.set", { timezone: '"Eastern"', enable_ntp: '"ntp"', server: '"time.google.com"' }],
   ]);

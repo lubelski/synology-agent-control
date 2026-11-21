@@ -33,14 +33,14 @@ type PlatformDefaults = Pick<
 const PLATFORMS: Record<Platform, PlatformDefaults> = {
   dsm: {
     envPrefix: "DSM",
-    session: "syno-cli",
+    session: "synology-agent-control",
     authVersion: 6,
     authPath: "entry.cgi",
     readOnly: false,
   },
   srm: {
     envPrefix: "SRM",
-    session: "syno-cli-router",
+    session: "synology-agent-control-router",
     authVersion: 3,
     authPath: "auth.cgi",
     readOnly: true,

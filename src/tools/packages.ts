@@ -785,7 +785,7 @@ async function waitForVersionFlip(
   throw new Error(
     `Install of ${packageId} issued but not confirmed within ${timeoutMs / 1000}s ` +
       `(package not yet at ${targetVersion} in Package.list). DSM may still be ` +
-      `committing. Re-check with "syno packages list" before retrying.`
+      `committing. Re-check with "synology-agent-control packages list" before retrying.`
   );
 }
 
@@ -823,7 +823,7 @@ export async function nasPackageUpdate(
   const catalog = findCatalogEntry(packages, args.name);
   if (!before) {
     throw new Error(
-      `Package "${args.name}" is not installed. Use "syno packages install" for fresh installs.`
+      `Package "${args.name}" is not installed. Use "synology-agent-control packages install" for fresh installs.`
     );
   }
   if (!isNewerVersion(catalog.version, before.version)) {
@@ -845,8 +845,8 @@ export async function nasPackageUpdate(
         status: "needs_vm_shutdown",
         guests,
         message:
-          `Shut each guest down with "syno vms control <name> shutdown --yes", re-run ` +
-          `this update, then power them back on with "syno vms control <name> poweron --yes". ` +
+          `Shut each guest down with "synology-agent-control vms control <name> shutdown --yes", re-run ` +
+          `this update, then power them back on with "synology-agent-control vms control <name> poweron --yes". ` +
           `A guest whose status is not running or transitional needs the VMM UI.`,
       };
     }
@@ -894,7 +894,7 @@ export async function nasPackageInstall(
   const catalog = findCatalogEntry(packages, args.name);
   if (before) {
     throw new Error(
-      `Package "${args.name}" is already installed (version ${before.version}). Use "syno packages update" to upgrade.`
+      `Package "${args.name}" is already installed (version ${before.version}). Use "synology-agent-control packages update" to upgrade.`
     );
   }
 
@@ -931,7 +931,7 @@ export async function nasPackageInstall(
       message:
         `Installing ${catalog.id} (${catalog.version}) requires DSM to also install: ${human}. ` +
         `This is Package Center's "the following operations will also be performed" prompt. ` +
-        `Re-run "syno packages install ${args.name} --accept-dependencies --yes" to install all of them.`,
+        `Re-run "synology-agent-control packages install ${args.name} --accept-dependencies --yes" to install all of them.`,
     };
   }
 
@@ -1117,7 +1117,7 @@ export async function nasPackageUninstall(
           `The CLI removes the package but PRESERVES that data on disk. To also DELETE ` +
           `the data, uninstall via Package Center (DSM UI) — that option is ` +
           `package-specific and not exposed safely through the API. Re-run ` +
-          `"syno packages uninstall ${args.name} --keep-data --yes" to proceed.`,
+          `"synology-agent-control packages uninstall ${args.name} --keep-data --yes" to proceed.`,
       };
     }
     // keep_data === true → proceed with the default, data-preserving uninstall.

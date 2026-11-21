@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * syno — command-line access to a Synology NAS (DSM 7) and SRM router.
+ * synology-agent-control — command-line access to a Synology NAS (DSM 7) and SRM router.
  *
  * Output contract, chosen for agent use as much as human use:
  *   - stdout is only ever the result, as JSON. Pipe it to jq without filtering.
@@ -37,9 +37,9 @@ interface Outcome {
 
 function helpText(): string {
   const lines = [
-    `syno ${VERSION}: Synology devices from the command line`,
+    `synology-agent-control ${VERSION}: Synology devices from the command line`,
     "",
-    "Usage: syno <command> [args] [--flags]",
+    "Usage: synology-agent-control <command> [args] [--flags]",
     "",
     "Commands:",
   ];
@@ -145,5 +145,5 @@ main()
     // A malformed invocation is exit 2 (the documented usage code); anything else
     // is a runtime or API failure at exit 1. Both flush stderr before exiting.
     const code = err instanceof UsageError ? 2 : 1;
-    finish({ code, stderr: `[syno] ${errorMessage(err)}` });
+    finish({ code, stderr: `[synology-agent-control] ${errorMessage(err)}` });
   });
