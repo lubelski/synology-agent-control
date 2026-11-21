@@ -1,16 +1,19 @@
 {
-  "name": "synology-cli",
+  "name": "synology-agent-control",
   "version": "0.5.0",
   "description": "Agent-oriented command-line access to Synology DSM and SRM, with curated operations and a raw Web API escape hatch.",
   "type": "module",
   "license": "MIT",
   "author": "Peter Vulgaris",
+  "contributors": [
+    "William Lubelski"
+  ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pvulgaris/synology-cli.git"
+    "url": "git+https://github.com/lubelski/synology-agent-control.git"
   },
-  "homepage": "https://github.com/pvulgaris/synology-cli#readme",
-  "bugs": "https://github.com/pvulgaris/synology-cli/issues",
+  "homepage": "https://github.com/lubelski/synology-agent-control#readme",
+  "bugs": "https://github.com/lubelski/synology-agent-control/issues",
   "engines": {
     "node": ">=22"
   },
@@ -22,7 +25,7 @@
     "cli"
   ],
   "bin": {
-    "syno": "dist/cli.js"
+    "synology-agent-control": "dist/cli.js"
   },
   "files": [
     "dist/"

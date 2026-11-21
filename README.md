@@ -1,17 +1,19 @@
-# synology-cli
+# synology-agent-control
 
-`syno` is an agent-oriented command-line tool for Synology DSM and SRM devices. It provides curated commands for common operations and a target-aware `raw` escape hatch for the rest.
+This is a fork of [`pvulgaris/synology-cli`](https://github.com/pvulgaris/synology-cli) by Peter Vulgaris. The design and nearly all of the code are his. The fork renames the tool from `syno` to `synology-agent-control`. It is not affiliated with or endorsed by the upstream project.
 
-Every command prints JSON on stdout, so you can pipe it straight to `jq`. Concise progress and errors go to stderr; `--verbose` adds the Synology API trace. Exit 0 on success, 1 on failure, 2 on a usage error, 3 when `syno state` or `syno router state` finds drift.
+`synology-agent-control` is an agent-oriented command-line tool for Synology DSM and SRM devices. It provides curated commands for common operations and a target-aware `raw` escape hatch for the rest.
+
+Every command prints JSON on stdout, so you can pipe it straight to `jq`. Concise progress and errors go to stderr; `--verbose` adds the Synology API trace. Exit 0 on success, 1 on failure, 2 on a usage error, 3 when `synology-agent-control state` or `synology-agent-control router state` finds drift.
 
 ## Install
 
 ```sh
 npm install -g .
-syno --help
+synology-agent-control --help
 ```
 
-That puts `syno` on your `PATH`. Node 22 or newer.
+That puts `synology-agent-control` on your `PATH`. Node 22 or newer.
 
 ## Configure
 
@@ -36,15 +38,15 @@ Configure SRM independently when needed. Process settings apply to both targets.
 | `SRM_BASE_URL` | SRM target, e.g. `https://router.example.test:8001`. |
 | `SRM_USER`, `SRM_PASSWORD`, `SRM_TOTP_SECRET` | router login (also `*_FILE`). Must be an SRM admin; usage is read-only. |
 | `SRM_TLS_SKIP_VERIFY` | `1` skips certificate verification for the router, as `DSM_TLS_SKIP_VERIFY` does for DSM. |
-| `AUDIT_LOG_DIR` | where write operations are logged. Default `~/.local/state/syno/audit/`. |
+| `AUDIT_LOG_DIR` | where write operations are logged. Default `~/.local/state/synology-agent-control/audit/`. |
 
-`SRM_*` is independent of `DSM_*`. For example, `syno router update-check` and `syno raw --target=srm ...` work with no DSM configuration. SRM remains read-only.
+`SRM_*` is independent of `DSM_*`. For example, `synology-agent-control router update-check` and `synology-agent-control raw --target=srm ...` work with no DSM configuration. SRM remains read-only.
 
-Each target's session is cached independently under `~/.local/state/syno/` so back-to-back invocations don't each burn a login and a 2FA code.
+Each target's session is cached independently under `~/.local/state/synology-agent-control/` so back-to-back invocations don't each burn a login and a 2FA code.
 
 ## Commands
 
-`syno --help` lists commands for people. `syno help --json` returns the same
+`synology-agent-control --help` lists commands for people. `synology-agent-control help --json` returns the same
 registry with arguments, flags, supported platforms, and mutation status for
 agents. The registry is the command inventory; it is not duplicated here.
 
@@ -54,10 +56,10 @@ merging their JSON.
 
 ## Writes require `--yes`
 
-Any command marked **write** refuses to run without `--yes`. So does `syno raw` for POST or a method outside its read allowlist, except for endpoint-specific calls verified as read-only.
+Any command marked **write** refuses to run without `--yes`. So does `synology-agent-control raw` for POST or a method outside its read allowlist, except for endpoint-specific calls verified as read-only.
 
 ```sh
-syno packages update SynologyDrive --yes
+synology-agent-control packages update SynologyDrive --yes
 ```
 
 Nothing prompts you. The flag is the confirmation.
@@ -70,8 +72,8 @@ Every write is appended to a monthly JSONL audit log with the before/after state
 
 ## Declared state
 
-`syno state check <file>` compares the NAS with an expected-state JSON file and
-exits 3 on drift; `syno state apply <file> --yes` converges the fields with a
+`synology-agent-control state check <file>` compares the NAS with an expected-state JSON file and
+exits 3 on drift; `synology-agent-control state apply <file> --yes` converges the fields with a
 verified write path, reads the NAS again, and exits 3 if any drift remains. The
 file declares a share (`vol_path`, `btrfs_cow`, `recycle_bin`, `encryption`,
 `support_snapshot`), the account that writes to it (`description`,
@@ -103,8 +105,8 @@ schedules run on NAS-local time, so apply sets it too.
 For anything without a named command, select DSM by default or SRM explicitly:
 
 ```sh
-syno raw SYNO.Core.Share get --version=1 name='"docs"'
-syno raw SYNO.Core.System info --target=srm --params-json='{}'
+synology-agent-control raw SYNO.Core.Share get --version=1 name='"docs"'
+synology-agent-control raw SYNO.Core.System info --target=srm --params-json='{}'
 ```
 
 `--params-json` handles Synology's wire quoting for strings, booleans, numbers, arrays, and objects. The trailing `k=v` form remains available for direct wire values. Do not combine the two forms.
@@ -115,4 +117,4 @@ See [`docs/dsm-api-quirks.md`](docs/dsm-api-quirks.md) for error codes, cross-AP
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). Copyright Peter Vulgaris for the original `synology-cli`, and William Lubelski for the changes made in this fork.

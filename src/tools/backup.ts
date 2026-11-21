@@ -209,7 +209,7 @@ export async function nasShareSnapshotConfig(dsm: SynoClient, args: { share: str
       policy_type: finiteNum(ret.policyType),
     },
     snapshot_count: (info.snapshots ?? []).length,
-    note: "Per-snapshot immutability (WORM lock) is reported by `syno shares snapshots <share>`, not here.",
+    note: "Per-snapshot immutability (WORM lock) is reported by `synology-agent-control shares snapshots <share>`, not here.",
   };
 }
 

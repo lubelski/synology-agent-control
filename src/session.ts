@@ -5,9 +5,9 @@
  *
  *   1. Every invocation would log in. Beyond being slow (a login is a round-trip
  *      plus an `op`/file credential read), DSM rejects a second login reusing the
- *      same 30-second TOTP code with error 404. Two `syno` calls in one shell
+ *      same 30-second TOTP code with error 404. Two `synology-agent-control` calls in one shell
  *      pipeline would fail the second one.
- *   2. Nothing coordinates concurrent invocations. `syno status & syno shares list &`
+ *   2. Nothing coordinates concurrent invocations. `synology-agent-control status & synology-agent-control shares list &`
  *      both miss the cache, both log in, and DSM 404s whichever loses the race.
  *
  * The SID cache uses an exclusive lock so only one process logs in at a time. It
@@ -108,7 +108,7 @@ export function currentTotpWindow(now = Date.now()): number {
 export function stateDir(): string {
   const base =
     process.env.XDG_STATE_HOME?.trim() || join(homedir(), ".local", "state");
-  return join(base, "syno");
+  return join(base, "synology-agent-control");
 }
 
 /** Default session path, per target+account. The identity is folded into the
@@ -227,7 +227,7 @@ export async function withSessionLock<T>(
       if (Date.now() > deadline) {
         throw new Error(
           `Timed out after ${Math.round(timeoutMs / 1000)}s waiting for the DSM session lock at ${lockPath}. ` +
-            `If no other syno process is running, delete that file.`
+            `If no other synology-agent-control process is running, delete that file.`
         );
       }
       await sleep(LOCK_POLL_MS);
@@ -274,7 +274,7 @@ export async function awaitFreshTotpWindow(
   const waitMs = nextBoundary - t + TOTP_SKEW_CUSHION_MS;
   if (waitMs <= 0) return 0;
   console.error(
-    `[syno] waiting ${(waitMs / 1000).toFixed(1)}s for a fresh 2FA code (the previous login used the current one)`
+    `[synology-agent-control] waiting ${(waitMs / 1000).toFixed(1)}s for a fresh 2FA code (the previous login used the current one)`
   );
   await delay(waitMs);
   return waitMs;

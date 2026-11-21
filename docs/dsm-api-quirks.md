@@ -41,7 +41,7 @@ It reports progress for a supplied `prefix`, such as `virtualization_guest`.
 ## Provisional network API observations
 
 These shapes were observed in DSM 7 Network UI traffic. They are notes for
-`syno raw`, not supported named-command contracts.
+`synology-agent-control raw`, not supported named-command contracts.
 
 ### Automatic IPv6 on one interface
 
@@ -51,7 +51,7 @@ configured IPv6 mode, so this observation cannot safely change an interface
 that already has an IPv6 address.
 
 The UI sent `SYNO.Entry.Request` v1 `request` as a POST with this parameter
-object. `syno raw --params-json` applies the required top-level wire quoting:
+object. `synology-agent-control raw --params-json` applies the required top-level wire quoting:
 
 ```json
 {
@@ -197,7 +197,7 @@ params. Those codes read like a missing or malformed parameter and aren't. Addin
 
 ## NFS exports and shared-folder creation
 
-No command creates a share or turns NFS on; these were driven with `syno raw` on DSM 7.4.1
+No command creates a share or turns NFS on; these were driven with `synology-agent-control raw` on DSM 7.4.1
 (2026-09-29) to export a new share to a macOS client.
 
 - **Creating a share**: `SYNO.Core.Share` v1 `create`, POST, with `name` and a `shareinfo` object:

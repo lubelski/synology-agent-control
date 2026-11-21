@@ -17,5 +17,5 @@ test("build: generated CLI entry point works", () => {
   });
   assert.equal(result.error, undefined);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /^syno /);
+  assert.match(result.stdout, /^synology-agent-control /);
 });

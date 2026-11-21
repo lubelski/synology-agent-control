@@ -331,7 +331,7 @@ test("project detail is the only source; the list entry just resolves the id", a
 });
 
 test("project deploy stops, updates, builds, verifies, and never audits Compose content", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "syno-container-deploy-"));
+  const dir = mkdtempSync(join(tmpdir(), "synology-agent-control-container-deploy-"));
   const file = join(dir, "compose.yaml");
   const compose = "services:\n  app:\n    image: example/app:stable\n    environment:\n      PASSWORD: do-not-log\n";
   writeFileSync(file, compose);
@@ -406,7 +406,7 @@ test("project deploy stops, updates, builds, verifies, and never audits Compose 
 });
 
 test("container control and remove verify ambiguous writes and write audit records", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "syno-container-control-"));
+  const dir = mkdtempSync(join(tmpdir(), "synology-agent-control-container-control-"));
   let exists = true;
   let running = true;
   const dsm = {
@@ -454,7 +454,7 @@ test("container control and remove verify ambiguous writes and write audit recor
 
 test("container writes throw after recording failed verification", async (t) => {
   t.mock.timers.enable({ apis: ["Date"], now: 0 });
-  const dir = mkdtempSync(join(tmpdir(), "syno-container-failed-verification-"));
+  const dir = mkdtempSync(join(tmpdir(), "synology-agent-control-container-failed-verification-"));
 
   const runningContainer = unchangedContainer(true, "stop");
   const controlFailure = assert.rejects(
@@ -515,7 +515,7 @@ test("container writes throw after recording failed verification", async (t) => 
 });
 
 test("container writes do not treat DSM errors as ambiguous", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "syno-container-dsm-error-"));
+  const dir = mkdtempSync(join(tmpdir(), "synology-agent-control-container-dsm-error-"));
   let listCalls = 0;
   const dsm = {
     call: async (opts: any) => {

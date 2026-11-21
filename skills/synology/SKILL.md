@@ -1,35 +1,35 @@
 ---
 name: synology
-description: "Manage a Synology NAS (DSM 7) and SRM router via the `syno` CLI: Container Manager, packages, security audit, shares, snapshots, backups, storage health. Use when the user asks about NAS status, containers, package updates / research / installation / removal, or security posture."
+description: "Manage a Synology NAS (DSM 7) and SRM router via the `synology-agent-control` CLI: Container Manager, packages, security audit, shares, snapshots, backups, storage health. Use when the user asks about NAS status, containers, package updates / research / installation / removal, or security posture."
 ---
 
 # Synology NAS
 
-`syno` is a command-line tool for DSM and SRM. Every command prints JSON on stdout (pipe it to `jq`); concise progress and errors go to stderr. Add `--verbose` only when the API trace is needed. Exit 0 on success, 1 on failure, 2 on a usage error, 3 when `syno state` or `syno router state` finds drift.
+`synology-agent-control` is a command-line tool for DSM and SRM. Every command prints JSON on stdout (pipe it to `jq`); concise progress and errors go to stderr. Add `--verbose` only when the API trace is needed. Exit 0 on success, 1 on failure, 2 on a usage error, 3 when `synology-agent-control state` or `synology-agent-control router state` finds drift.
 
 Auth is owned by the CLI. It loads and caches only the selected target. DSM uses `DSM_*`; SRM uses `SRM_*` and works without DSM configuration. The DSM account is in the `administrators` group because DSM 7 gates its admin APIs on that membership. SRM is read-only at the client layer.
 
-Use `syno help --json` for the authoritative command, input, platform, and mutation inventory. This file covers which commands to compose for a request and how to turn their output into stable audit findings.
+Use `synology-agent-control help --json` for the authoritative command, input, platform, and mutation inventory. This file covers which commands to compose for a request and how to turn their output into stable audit findings.
 
 ## When to use
 
 - **Status + storage**: "is the NAS okay?", "drive health", "RAID state".
 - **Packages**: list installed, check for updates, get info, install, update, uninstall.
 - **Containers**: inspect containers, projects, logs, and images; deploy an existing Compose project; control or remove a container.
-- **Package research**: "what's a good package for X?", "should I install Y?". Compose with WebSearch plus `syno packages list` so you don't recommend what's already installed.
+- **Package research**: "what's a good package for X?", "should I install Y?". Compose with WebSearch plus `synology-agent-control packages list` so you don't recommend what's already installed.
 - **Security audit**: "audit security", "is my NAS configured safely?". Fan out the read commands below and group the findings.
 
 ## The `raw` escape hatch
 
-Anything the selected Synology target exposes but `syno` has no named command for is reachable with:
+Anything the selected Synology target exposes but `synology-agent-control` has no named command for is reachable with:
 
 ```
-syno raw <api> <method> [--target=dsm|srm] [--version=N] [--post] [--params-json=JSON] [k=v ...]
+synology-agent-control raw <api> <method> [--target=dsm|srm] [--version=N] [--post] [--params-json=JSON] [k=v ...]
 ```
 
 Prefer `--params-json` so the CLI handles Synology's wire quoting. The trailing `k=v` form sends direct wire values. Do not combine the forms. `--post` and non-read methods need `--yes` unless the exact endpoint is verified as read-only; SRM refuses all mutations even with confirmation.
 
-Use `--` to stop flag parsing when a DSM param name collides with a CLI flag: `syno raw SYNO.Foo get -- --version=3` sends a literal param rather than setting the API version.
+Use `--` to stop flag parsing when a DSM param name collides with a CLI flag: `synology-agent-control raw SYNO.Foo get -- --version=3` sends a literal param rather than setting the API version.
 
 Prefer a named command when one exists. Reach for `raw` to explore a new endpoint or to answer a one-off question, and read `docs/dsm-api-quirks.md` first. Most surprising `code:` errors are documented there. `raw` also gates non-read method names even when they use GET, because DSM does not consistently align mutation with POST.
 
@@ -42,7 +42,7 @@ gateways, bonds, VLANs, or other modes.
 
 1. Read the current interfaces:
    ```sh
-   syno raw SYNO.Core.Network.Ethernet list --version=2
+   synology-agent-control raw SYNO.Core.Network.Ethernet list --version=2
    ```
 2. Select the exact `ifname`. Stop if it is absent or its `ipv6` array is
    nonempty because this read does not identify the configured mode.
@@ -59,7 +59,7 @@ gateways, bonds, VLANs, or other modes.
    `docs/dsm-api-quirks.md`. Replace both `INTERFACE` values in its parameter
    object with the verified `ifname`, then pass that object as `<JSON>`:
    ```sh
-   syno raw SYNO.Entry.Request request --version=1 --post --yes --params-json='<JSON>'
+   synology-agent-control raw SYNO.Entry.Request request --version=1 --post --yes --params-json='<JSON>'
    ```
 5. Re-read `SYNO.Core.Network.Ethernet` v2 `list`. Report success only when the
    selected interface has a nonempty `ipv6` array. If the write reports a
@@ -73,7 +73,7 @@ Writes need `--yes` on the command line. Nothing prompts you, so the confirmatio
 
 For each write:
 
-1. Read the current state first (`syno packages list` or `syno packages info <name>`).
+1. Read the current state first (`synology-agent-control packages list` or `synology-agent-control packages info <name>`).
 2. Render this exact confirmation block in prose and wait for a literal `yes`:
    ```
    Update proposed:
@@ -92,20 +92,20 @@ If a package write returns `verified: false`, surface the entire `{ before, afte
 
 Installing a package with dependencies returns a plan instead of installing. Re-run with `--accept-dependencies` once the user has seen the list.
 
-Updating Virtual Machine Manager while a guest runs returns `needs_vm_shutdown` naming the guests, and writes nothing. Confirm with the user, shut each down with `syno vms control`, update, then power them back on.
+Updating Virtual Machine Manager while a guest runs returns `needs_vm_shutdown` naming the guests, and writes nothing. Confirm with the user, shut each down with `synology-agent-control vms control`, update, then power them back on.
 
 Uninstall only ever preserves data. `--keep-data` is required to proceed; actual data deletion is package-specific and belongs in the DSM UI.
 
 First-time-only gotcha: if Package Center calls return odd errors on a freshly-created DSM account, the user may need to log into the DSM UI as that account once and accept the Package Center TOS. Offer it as a hypothesis on a brand-new install only.
 
 **Hard refusals** (the CLI rejects these):
-- `syno packages update DSM`: DSM self-updates are out of scope; apply via the DSM UI.
+- `synology-agent-control packages update DSM`: DSM self-updates are out of scope; apply via the DSM UI.
 - Kernel-flagged packages, same reason.
 - Firewall rule edits, 2FA enforcement changes, SMB protocol toggles aren't implemented. Surface them as findings with the DSM UI path to fix.
 
 ## Container project deploy flow
 
-`syno containers projects deploy` is for an existing Container Manager project. It resolves a name to the live project id, stops its running containers, uploads the local Compose document as the project definition, calls `Project.build`, and polls the project until every long-running container is ready. A completed one-shot service is accepted only when it exited 0.
+`synology-agent-control containers projects deploy` is for an existing Container Manager project. It resolves a name to the live project id, stops its running containers, uploads the local Compose document as the project definition, calls `Project.build`, and polls the project until every long-running container is ready. A completed one-shot service is accepted only when it exited 0.
 
 The CLI treats DSM code 1202 and a dropped connection as ambiguous during project stop/build, then verifies the project state. It never calls a failed deploy successful based on the API response alone. Container Manager's build wrapper does not remove orphan containers, so inspect `containers projects info` after removing a service and confirm any orphan separately before `containers remove`.
 
@@ -113,7 +113,7 @@ The Compose document is sensitive even when the current file has no secret: envi
 
 ## Declared state
 
-`syno state check <expected.json>` diffs a NAS against a declared expected-state file (what it covers: `syno help --json`); it exits 3 on drift with one finding per drifted field, so several can share a `subject` (`fix: "api"` converges under apply, `"dsm"` needs the DSM UI and carries only the current and expected values). The file is validated strictly: an unknown key or wrong type is a usage error (exit 2), not a skipped check. `syno state apply <expected.json> --yes` converges the `api` findings, reads the NAS again, and lists what it wrote (`writes`) and what still drifts (`findings`). When a user keeps an expected-state file, change those settings through it rather than by hand in DSM, or the next check reports the difference as drift.
+`synology-agent-control state check <expected.json>` diffs a NAS against a declared expected-state file (what it covers: `synology-agent-control help --json`); it exits 3 on drift with one finding per drifted field, so several can share a `subject` (`fix: "api"` converges under apply, `"dsm"` needs the DSM UI and carries only the current and expected values). The file is validated strictly: an unknown key or wrong type is a usage error (exit 2), not a skipped check. `synology-agent-control state apply <expected.json> --yes` converges the `api` findings, reads the NAS again, and lists what it wrote (`writes`) and what still drifts (`findings`). When a user keeps an expected-state file, change those settings through it rather than by hand in DSM, or the next check reports the difference as drift.
 
 ## Protected packages (per-user policy)
 
@@ -121,11 +121,11 @@ The user maintains a `protect:` list of packages that must never be offered for 
 
 ## Audit log
 
-Every write is logged as JSONL under the CLI's state directory (`~/.local/state/syno/audit/YYYY-MM.jsonl` by default, `AUDIT_LOG_DIR` overrides), with timestamp, command, args, before/after state, ok flag, and error. Surface the path when the user asks "what did Claude do?" so they can read it themselves.
+Every write is logged as JSONL under the CLI's state directory (`~/.local/state/synology-agent-control/audit/YYYY-MM.jsonl` by default, `AUDIT_LOG_DIR` overrides), with timestamp, command, args, before/after state, ok flag, and error. Surface the path when the user asks "what did Claude do?" so they can read it themselves.
 
 ## Composition examples (do not script; Claude composes)
 
-- **Package update from a Synology notification email**: search Gmail for the notification, cross-reference with `syno packages updates`, render a per-package summary, confirm one at a time, run `syno packages update <name> --yes`, archive the email once all confirmed updates succeed.
+- **Package update from a Synology notification email**: search Gmail for the notification, cross-reference with `synology-agent-control packages updates`, render a per-package summary, confirm one at a time, run `synology-agent-control packages update <name> --yes`, archive the email once all confirmed updates succeed.
 - **Security audit**: fan out the read commands in parallel, group findings by severity, present DSM UI fix paths. Never auto-remediate.
 - **Cleanup**: list packages, bucket as active / dormant / candidate (system and protected packages never appear as candidates), present the dormant and candidate list with reasoning, confirm one at a time. **Only packages with `additional.install_type !== "system"` are user-removable**. The DSM UI hides the uninstall button on system-marked packages even when they show up in Package Center.
 
@@ -135,7 +135,7 @@ When composing security-audit output, attach a stable `id: synology.<category>.<
 
 | ID | Trigger |
 |---|---|
-| `synology.firewall.disabled` | `syno security firewall` → `firewall_enabled === false` |
+| `synology.firewall.disabled` | `synology-agent-control security firewall` → `firewall_enabled === false` |
 | `synology.firewall.dos_off_on_adapter` | one entry per adapter with `dos_protect_enable === false` (include adapter name) |
 | `synology.dsm.https_redirect_off` | `web_hardening.https_redirect === false` |
 | `synology.dsm.hsts_off` | `web_hardening.hsts === false` |
@@ -154,6 +154,6 @@ When composing security-audit output, attach a stable `id: synology.<category>.<
 | `synology.external.quickconnect_relay_on` | `quick_connect.enabled === false` AND `relay_enabled === true` (half-configured) |
 | `synology.password.weak_policy` | fields nest under `password_policy.strong_password`: `min_length < 12` (only meaningful when `min_length_enable === true`), `included_special_char === false`, `history_num === 0` |
 | `synology.privacy.active_insight_on` | `active_insight.monitoring_service === true` (observation only) |
-| `synology.packages.outdated` | `syno packages updates` → `pending` non-empty |
+| `synology.packages.outdated` | `synology-agent-control packages updates` → `pending` non-empty |
 
 The point isn't exhaustive coverage, it's stable IDs for the load-bearing findings. New checks coin new IDs in the same pattern (`synology.<category>.<short_name>`).

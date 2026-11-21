@@ -27,7 +27,7 @@ import {
 
 // Audit records are written to a throwaway local dir per test run.
 const cfg = {
-  auditLogDir: mkdtempSync(path.join(os.tmpdir(), "synmcp-test-")),
+  auditLogDir: mkdtempSync(path.join(os.tmpdir(), "synology-agent-control-test-")),
 } as unknown as RuntimeConfig;
 
 // Field names mirror the real production-verified SYNO.Core.Package.Server.list

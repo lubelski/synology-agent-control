@@ -16,13 +16,13 @@
  *   a live set of advYearly=1 with yearly=1 read back advYearly 1, yearly 0.
  * SYNO.DisasterRecovery.Retention get_worm_lock/set_worm_lock v1:
  *   { type: "Share", name, worm_lock_enable, worm_lock_day }.
- * SYNO.Core.FileServ.NFS.SharePrivilege load/save v1, driven with `syno raw`
+ * SYNO.Core.FileServ.NFS.SharePrivilege load/save v1, driven with `synology-agent-control raw`
  *   and read back on 2026-09-29: both take `share_name` (`name` answers 2301,
  *   and a share that does not exist answers 2370); save replaces the share's
  *   whole rule set; each rule is { client, privilege, root_squash, async,
  *   insecure, crossmnt, security_flavor: { kerberos, kerberos_integrity,
  *   kerberos_privacy, sys } }.
- * SYNO.Core.Region.NTP get/set v1, set sent with `syno raw` and read back on
+ * SYNO.Core.Region.NTP get/set v1, set sent with `synology-agent-control raw` and read back on
  *   2026-09-30: { timezone, enable_ntp, server }. Zones are DSM's own names
  *   ("Eastern", "Pacific"), not IANA; enable_ntp reads "ntp" when NTP is on.
  * SYNO.Core.FileServ.NFS get v1: { enable_nfs, ... }. `root_squash` names who is mapped to what: "root" means no

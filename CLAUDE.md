@@ -1,12 +1,14 @@
-# CLAUDE.md: synology-cli
+# CLAUDE.md: synology-agent-control
 
 Onboarding for a future Claude session (or any human collaborator). What's here that you can't easily get from the README, the source, or `git log`.
 
 ## What this is
 
-`syno`, an agent-oriented CLI over a typed subset of the Synology Web API. DSM and read-only SRM are independent peer targets. It runs on your machine, not on either device.
+A fork of [`pvulgaris/synology-cli`](https://github.com/pvulgaris/synology-cli) by Peter Vulgaris, renamed from `syno` to `synology-agent-control`. The guidance below is his and still holds. Issue and PR numbers in this file refer to the upstream repository. Keep the attribution in `LICENSE`, `package.json`, and the README intact.
 
-`src/commands.ts` is authoritative for dispatch, strict input validation, supported platforms, `--help`, and `syno help --json`. The README and skill point agents to that manifest instead of duplicating the inventory. [Issue #31](https://github.com/pvulgaris/synology-cli/issues/31) records the modernization design and completion criteria.
+`synology-agent-control`, an agent-oriented CLI over a typed subset of the Synology Web API. DSM and read-only SRM are independent peer targets. It runs on your machine, not on either device.
+
+`src/commands.ts` is authoritative for dispatch, strict input validation, supported platforms, `--help`, and `synology-agent-control help --json`. The README and skill point agents to that manifest instead of duplicating the inventory. [Issue #31](https://github.com/pvulgaris/synology-cli/issues/31) records the modernization design and completion criteria.
 
 Resolve and validate a command before loading target configuration or credentials. Every handler receives exactly one target and one client. There is deliberately no command that fans out across both devices: a cross-device digest existed and was removed, because it merged updates you can apply with updates that are detection-only, and it needed a second dispatch path whose "nothing configured" case reported success. Compose the per-target commands instead.
 
@@ -16,14 +18,14 @@ Response shapes are deliberately frozen. `skills/synology/SKILL.md` maps audit f
 
 A CLI is a fresh process per invocation, which turns two latent problems into everyday ones: every run would log in, and DSM rejects a second login that reuses the same 30-second TOTP code. So the SID cache in `src/session.ts` is load-bearing, not a dev convenience.
 
-- Session files live at `~/.local/state/syno/session-<label>.json`, mode 0600, written temp-file-then-rename.
-- An `O_EXCL` lock file next to it serializes logins across processes, so `syno status & syno shares list &` doesn't race two logins into a TOTP-reuse 404. A lock older than 90s is presumed abandoned and broken.
+- Session files live at `~/.local/state/synology-agent-control/session-<label>.json`, mode 0600, written temp-file-then-rename.
+- An `O_EXCL` lock file next to it serializes logins across processes, so `synology-agent-control status & synology-agent-control shares list &` doesn't race two logins into a TOTP-reuse 404. A lock older than 90s is presumed abandoned and broken.
 - When a login genuinely is needed inside the window that produced the last SID, `awaitFreshTotpWindow` waits for the next code rather than burning the current one. That wait is why the stale-lock bound must stay above 30s: a holder waiting out a TOTP window is not stuck.
 - DSM and SRM get independent session files keyed by target and account. A rejected cached SID waits for a fresh TOTP window before re-login.
 
 ## `raw`
 
-`syno raw <api> <method> [--target=dsm|srm] [--version=N] [--post] [--params-json=JSON] [k=v ...]` reaches an endpoint without a named command. Prefer `--params-json`; it handles Synology's form-value quoting.
+`synology-agent-control raw <api> <method> [--target=dsm|srm] [--version=N] [--post] [--params-json=JSON] [k=v ...]` reaches an endpoint without a named command. Prefer `--params-json`; it handles Synology's form-value quoting.
 
 `--post` goes through the same `--yes` gate as the named writes. So does any method that `methodMayMutate` does not recognize as a read, because Synology has mutating endpoints that use GET. SRM refuses all mutations at the client policy layer.
 
@@ -73,7 +75,7 @@ SRM is independent of DSM. An SRM-only command loads only `SRM_*`, so it works w
 - The target is **read-only** at the `SynoClient` level. Authentication path, version, credential prefix, session, and policy are fields on `TargetConfig`. The generic client in `client.ts` has no DSM/SRM construction branch.
 - SRM's package and upgrade reads are admin-gated with no selective grant, so `SRM_USER` must be an admin. SRM does support extra admins (Control Panel → User → "Grant administrator privilege"; the widely-cited "primary admin only" claim is pre-1.3), so use a dedicated account. A Normal user gets code 402 at login.
 - **Verified live (SRM 1.3.1 / RT6600ax, 2026-06-26):** router login is at `auth.cgi` with `SYNO.API.Auth` **v3** (DSM's `entry.cgi`/v6 returns 102); SRM reuses `SYNO.Core.Upgrade.Server check` v1 and returns DSM's flat `{available, version}` shape, with `current_version` from `SYNO.Core.System info` at **v1** (v3 is DSM-only, 104s on SRM); SRM's admin-gated reads don't need `enable_syno_token`.
-- **SRM has no package-update API.** `SYNO.Core.Package.Server` returns 103, so there is deliberately no `router packages updates` command. Its absence from `syno help --json` is the statement; don't add a command that returns an empty list.
+- **SRM has no package-update API.** `SYNO.Core.Package.Server` returns 103, so there is deliberately no `router packages updates` command. Its absence from `synology-agent-control help --json` is the statement; don't add a command that returns an empty list.
 - OS detection is detect-only. Applying DSM or SRM updates stays deferred (brick risk). `mapOsUpdate` only reports `available:true` when a concrete version is named, biasing to silence over crying wolf.
 
 ## DSM API quirks (the consolidated cheatsheet)
@@ -114,7 +116,7 @@ It returns every package installable on this DS (105+ items) with no `installed_
 
 ### `protect:` policy is skill-layer, not binary-enforced
 
-`skills/synology/SKILL.md` loads a per-user policy file naming packages the user doesn't want offered for uninstall (HyperBackup, ContainerManager, Tailscale). The binary doesn't read that file; refusal happens in the calling skill before it ever runs `syno packages uninstall`. Binary-side hard refusals are only `DSM` and `kernel`. The policy file's location and format are the user's choice.
+`skills/synology/SKILL.md` loads a per-user policy file naming packages the user doesn't want offered for uninstall (HyperBackup, ContainerManager, Tailscale). The binary doesn't read that file; refusal happens in the calling skill before it ever runs `synology-agent-control packages uninstall`. Binary-side hard refusals are only `DSM` and `kernel`. The policy file's location and format are the user's choice.
 
 ### Certificates are verified unless a target opts out
 
