@@ -5,6 +5,9 @@
  * from it: dispatch, `--help`, and the skill's generated command list. A command
  * added here needs no other edit to become invocable and documented.
  *
+ * The MCP server (`mcp.ts`) is generated from the same table: one tool per
+ * command, with its input schema built from `commandInputs`.
+ *
  * Every command returns a plain value that the CLI prints as JSON. Response
  * shapes are deliberately unchanged from the MCP tools they replace — the
  * `synology` skill asserts on specific fields (`firewall_enabled`,
@@ -119,10 +122,15 @@ export interface Command {
   /** Optional trailing positional values, used by raw k=v parameters. */
   variadic?: string;
   flags?: Readonly<Record<string, FlagSpec>>;
+  /** One line per argument or flag, keyed by its CLI spelling. Shown in
+   *  `help --json` and used as the MCP input schema descriptions. */
+  describe?: Readonly<Record<string, string>>;
   /**
    * Mutating commands require an explicit --yes because the CLI does not prompt.
    */
   mutating?: boolean;
+  /** A mutating command whose repeat with the same input changes nothing more. */
+  idempotent?: boolean;
   run(ctx: CommandContext): Promise<unknown>;
   /** Exit code for a successful run, when the result itself carries a verdict
    *  (default 0). */
@@ -134,7 +142,14 @@ export type RegisteredCommand = Command;
 type FlagType = "boolean" | "string" | "integer";
 export type FlagSpec =
   | FlagType
-  | { type: FlagType; required?: boolean; value?: string };
+  | {
+      type: FlagType;
+      required?: boolean;
+      value?: string;
+      /** The string value is a JSON object. A caller that already holds
+       *  structured data (MCP) passes the object and it is serialized here. */
+      json?: boolean;
+    };
 
 function flagType(spec: FlagSpec): FlagType {
   return typeof spec === "string" ? spec : spec.type;
@@ -231,6 +246,7 @@ export const COMMANDS: RegisteredCommand[] = [
     summary:
       "Btrfs snapshots for one share: timestamps, immutable/WORM lock state and window, newest/oldest, immutable count.",
     platforms: DSM,
+    describe: { share: "Shared folder name, as `shares list` reports it." },
     args: ["share"],
     run: (ctx) => nasShareSnapshots(ctx.client, { share: arg(ctx, 0) }),
   },
@@ -239,6 +255,7 @@ export const COMMANDS: RegisteredCommand[] = [
     summary:
       "Snapshot task config for one share: schedule (enabled, time, days, next run) and retention (Smart Recycle counts, retain days).",
     platforms: DSM,
+    describe: { share: "Shared folder name, as `shares list` reports it." },
     args: ["share"],
     run: (ctx) => nasShareSnapshotConfig(ctx.client, { share: arg(ctx, 0) }),
   },
@@ -249,6 +266,7 @@ export const COMMANDS: RegisteredCommand[] = [
     summary:
       "Compare the NAS with an expected-state JSON file (NAS time zone and NTP server; share, account, permission, snapshot schedule/retention/immutability, NFS export rules). Exits 3 on drift.",
     platforms: DSM,
+    describe: { file: "Path to the expected-state JSON file on the machine running this tool." },
     args: ["file"],
     run: (ctx) => nasStateCheck(ctx.client, expectedState(arg(ctx, 0), parseExpectedState)),
     exitCode: driftExit,
@@ -258,6 +276,8 @@ export const COMMANDS: RegisteredCommand[] = [
     summary:
       "Converge the NAS to an expected-state JSON file where a verified write exists (time zone and NTP, share permission, snapshot schedule, retention, immutability, and a declared NFS rule set, which replaces the share's rules; \"rules\": [] unexports it), then re-read it; drift with fix \"dsm\" needs the DSM UI. Exits 3 if drift remains.",
     platforms: DSM,
+    describe: { file: "Path to the expected-state JSON file on the machine running this tool." },
+    idempotent: true,
     args: ["file"],
     mutating: true,
     run: (ctx) => nasStateApply(ctx.runtime, ctx.client, expectedState(arg(ctx, 0), parseExpectedState)),
@@ -290,6 +310,10 @@ export const COMMANDS: RegisteredCommand[] = [
     name: "containers logs",
     summary: "Recent logs for one container in chronological order.",
     platforms: DSM,
+    describe: {
+      name: "Container name, as `containers list` reports it.",
+      limit: "How many of the most recent log lines to return.",
+    },
     args: ["name"],
     flags: { limit: "integer" },
     run: (ctx) =>
@@ -302,6 +326,7 @@ export const COMMANDS: RegisteredCommand[] = [
     name: "containers info",
     summary: "One container's command, network mode, mounts, and environment names.",
     platforms: DSM,
+    describe: { name: "Container name, as `containers list` reports it." },
     args: ["name"],
     run: (ctx) => nasContainerInfo(ctx.client, arg(ctx, 0)),
   },
@@ -309,6 +334,7 @@ export const COMMANDS: RegisteredCommand[] = [
     name: "containers stats",
     summary: "Current CPU, memory, network, and disk I/O use for one container.",
     platforms: DSM,
+    describe: { name: "Container name, as `containers list` reports it." },
     args: ["name"],
     run: (ctx) => nasContainerStats(ctx.client, arg(ctx, 0)),
   },
@@ -316,6 +342,10 @@ export const COMMANDS: RegisteredCommand[] = [
     name: "containers control",
     summary: "Start or stop one container and verify its resulting state.",
     platforms: DSM,
+    describe: {
+      name: "Container name, as `containers list` reports it.",
+      "start|stop": "What to do to the container.",
+    },
     args: ["name", "start|stop"],
     mutating: true,
     run: (ctx) => {
@@ -333,6 +363,7 @@ export const COMMANDS: RegisteredCommand[] = [
     name: "containers remove",
     summary: "Remove one container after it is stopped.",
     platforms: DSM,
+    describe: { name: "Container name, as `containers list` reports it." },
     args: ["name"],
     mutating: true,
     run: (ctx) =>
@@ -350,6 +381,9 @@ export const COMMANDS: RegisteredCommand[] = [
     name: "containers projects info",
     summary: "One Compose project's state and containers, resolved by name or id; omits Compose content.",
     platforms: DSM,
+    describe: {
+      "name-or-id": "Compose project name or id, as `containers projects list` reports it.",
+    },
     args: ["name-or-id"],
     run: (ctx) => nasContainerProjectInfo(ctx.client, arg(ctx, 0)),
   },
@@ -358,6 +392,10 @@ export const COMMANDS: RegisteredCommand[] = [
     summary:
       "Stop an existing project, replace its Compose definition from a local file, build it, and verify readiness without logging the file contents.",
     platforms: DSM,
+    describe: {
+      "name-or-id": "Compose project name or id, as `containers projects list` reports it.",
+      file: "Path to the Compose file on the machine running this tool.",
+    },
     args: ["name-or-id"],
     flags: { file: { type: "string", required: true, value: "PATH" } },
     mutating: true,
@@ -387,6 +425,11 @@ export const COMMANDS: RegisteredCommand[] = [
     summary:
       "Power a VM guest on, or shut it down cleanly through ACPI, and wait until VMM reports the new state. Idempotent.",
     platforms: DSM,
+    describe: {
+      name: "Guest name, as `vms list` reports it.",
+      "poweron|shutdown": "Power the guest on, or shut it down through ACPI.",
+    },
+    idempotent: true,
     args: ["name", "poweron|shutdown"],
     mutating: true,
     run: (ctx) => {
@@ -415,6 +458,9 @@ export const COMMANDS: RegisteredCommand[] = [
     name: "packages info",
     summary: "Installed and available versions plus publisher, changelog, dependencies, and size.",
     platforms: DSM,
+    describe: {
+      name: "Package id, as `packages list` reports it (for example SynologyDrive).",
+    },
     args: ["name"],
     run: (ctx) => nasPackageInfo(ctx.client, { name: arg(ctx, 0) }),
   },
@@ -423,6 +469,10 @@ export const COMMANDS: RegisteredCommand[] = [
     summary:
       "Install a package. Refuses DSM/kernel and already-installed packages. Without --accept-dependencies, a package with dependencies returns the plan instead of installing.",
     platforms: DSM,
+    describe: {
+      name: "Package id, as `packages list` reports it (for example SynologyDrive).",
+      "accept-dependencies": "Also install the dependencies named in the returned plan.",
+    },
     args: ["name"],
     flags: { "accept-dependencies": "boolean" },
     mutating: true,
@@ -437,6 +487,9 @@ export const COMMANDS: RegisteredCommand[] = [
     summary:
       "Update a package to the latest version. Refuses DSM/kernel and already-current packages. Verifies post-state.",
     platforms: DSM,
+    describe: {
+      name: "Package id, as `packages list` reports it (for example SynologyDrive).",
+    },
     args: ["name"],
     mutating: true,
     run: (ctx) => nasPackageUpdate(ctx.runtime, ctx.client, { name: arg(ctx, 0) }),
@@ -446,6 +499,10 @@ export const COMMANDS: RegisteredCommand[] = [
     summary:
       "Uninstall a package, PRESERVING its data. Requires --keep-data to proceed. Data deletion is not supported here; use the DSM UI.",
     platforms: DSM,
+    describe: {
+      name: "Package id, as `packages list` reports it (for example SynologyDrive).",
+      "keep-data": "Required. Confirms the uninstall keeps the package's data.",
+    },
     args: ["name"],
     flags: { "keep-data": "boolean" },
     mutating: true,
@@ -459,6 +516,11 @@ export const COMMANDS: RegisteredCommand[] = [
     name: "packages control",
     summary: "Start/stop/restart a package. Idempotent; verifies via status poll.",
     platforms: DSM,
+    describe: {
+      name: "Package id, as `packages list` reports it (for example SynologyDrive).",
+      "start|stop|restart": "What to do to the package.",
+    },
+    idempotent: true,
     args: ["name", "start|stop|restart"],
     mutating: true,
     run: (ctx) => {
@@ -535,6 +597,7 @@ export const COMMANDS: RegisteredCommand[] = [
     name: "router clients",
     summary: "Look up one remembered SRM client by MAC without returning the full device inventory.",
     platforms: SRM,
+    describe: { mac: "MAC address of the client to look up." },
     args: ["mac"],
     run: (ctx) => routerSrmClients(ctx.client, arg(ctx, 0)),
   },
@@ -543,6 +606,7 @@ export const COMMANDS: RegisteredCommand[] = [
     summary:
       'Compare the router\'s IPv4 DHCP reservations with an expected-state JSON file ({"dhcp_reservations": [{"mac", "ip"}]}); reservations the file does not name are ignored. Exits 3 on drift.',
     platforms: SRM,
+    describe: { file: "Path to the expected-state JSON file on the machine running this tool." },
     args: ["file"],
     run: (ctx) => routerSrmStateCheck(ctx.client, expectedState(arg(ctx, 0), parseRouterExpectedState)),
     exitCode: driftExit,
@@ -554,12 +618,20 @@ export const COMMANDS: RegisteredCommand[] = [
     summary:
       "Call any Synology Web API endpoint directly on the selected target. Accepts k=v or --params-json. GET unless --post.",
     platforms: SYNOLOGY,
+    describe: {
+      api: "Synology API name, for example SYNO.Core.Share.",
+      method: "API method, for example list.",
+      "k=v": "Parameters as k=v wire values, sent exactly as written. Not combinable with params-json.",
+      version: "API version. Defaults to 1.",
+      post: "Send as POST instead of GET.",
+      "params-json": "Parameters as a JSON object. Each value is encoded for Synology's wire format.",
+    },
     args: ["api", "method"],
     variadic: "k=v",
     flags: {
       version: { type: "integer", value: "N" },
       post: "boolean",
-      "params-json": { type: "string", value: "JSON" },
+      "params-json": { type: "string", value: "JSON", json: true },
     },
     run: (ctx) => {
       const api = arg(ctx, 0);
@@ -716,6 +788,77 @@ export function selectPlatform(
   return command.platforms.length === 1 ? command.platforms[0] : "dsm";
 }
 
+/** One named input of a command, independent of CLI spelling. `help --json`
+ *  lists these and the MCP server builds each tool's input schema from them. */
+export interface CommandInput {
+  /** snake_case key: the MCP argument name. */
+  key: string;
+  /** Where the value goes when the command is invoked. */
+  source: "arg" | "variadic" | "flag";
+  /** The CLI spelling: positional name or flag name. */
+  name: string;
+  type: "string" | "integer" | "boolean" | "json" | "strings";
+  required: boolean;
+  choices?: string[];
+  description?: string;
+}
+
+const TARGET_HELP = "Device to call. Defaults to dsm.";
+
+const snake = (name: string) => name.replace(/[^A-Za-z0-9]+/g, "_");
+
+/** A positional or flag value written `a|b|c` is a closed set of choices. */
+const choicesOf = (text: string | undefined) =>
+  text && text.includes("|") ? text.split("|") : undefined;
+
+/**
+ * The inputs a caller supplies, in positional order then flag order. The
+ * front-end flags (`--verbose`, `--yes`) are left out: each front end owns its
+ * own trace switch and confirmation argument.
+ */
+export function commandInputs(command: RegisteredCommand): CommandInput[] {
+  const describe = { target: TARGET_HELP, ...(command.describe ?? {}) };
+  const inputs: CommandInput[] = [];
+  const add = (input: CommandInput) => {
+    const description = describe[input.name as keyof typeof describe];
+    inputs.push(description ? { ...input, description } : input);
+  };
+  for (const name of command.args ?? []) {
+    const choices = choicesOf(name);
+    add({
+      key: choices ? "action" : snake(name),
+      source: "arg",
+      name,
+      type: "string",
+      required: true,
+      ...(choices ? { choices } : {}),
+    });
+  }
+  if (command.variadic) {
+    add({
+      key: "extra_args",
+      source: "variadic",
+      name: command.variadic,
+      type: "strings",
+      required: false,
+    });
+  }
+  for (const [name, spec] of Object.entries(commandFlags(command))) {
+    if (name === "verbose" || name === "yes") continue;
+    const object = typeof spec === "string" ? undefined : spec;
+    const choices = choicesOf(object?.value);
+    add({
+      key: snake(name),
+      source: "flag",
+      name,
+      type: object?.json ? "json" : flagType(spec),
+      required: object?.required ?? false,
+      ...(choices ? { choices } : {}),
+    });
+  }
+  return inputs;
+}
+
 export function commandManifest() {
   return COMMANDS.map((command) => ({
     name: command.name,
@@ -723,6 +866,8 @@ export function commandManifest() {
     usage: commandUsage(command),
     platforms: command.platforms,
     mutating: command.mutating ?? false,
+    idempotent: command.idempotent ?? false,
+    inputs: commandInputs(command),
     args: command.args ?? [],
     variadic: command.variadic ?? null,
     flags: Object.fromEntries(
