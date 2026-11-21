@@ -11,6 +11,10 @@ Auth is owned by the CLI. It loads and caches only the selected target. DSM uses
 
 Use `synology-agent-control help --json` for the authoritative command, input, platform, and mutation inventory. This file covers which commands to compose for a request and how to turn their output into stable audit findings.
 
+## MCP tools
+
+The same commands are also served as MCP tools by `synology-agent-control mcp`. When those tools are connected, use them instead of the shell. A command path maps to a snake_case tool name (`packages updates` is `packages_updates`), positional arguments and flags become named arguments, and `confirm: true` takes the place of `--yes`. Results are the same JSON, so every field path in this file applies unchanged. In read-only mode the write tools are absent. Say so instead of falling back to the CLI to get around it.
+
 ## When to use
 
 - **Status + storage**: "is the NAS okay?", "drive health", "RAID state".

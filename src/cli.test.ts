@@ -55,6 +55,7 @@ test("exit: help is 0 and prints the full help to stdout", () => {
   assert.equal(r.code, 0);
   // The last help line must be present — proof stdout wasn't truncated on exit.
   assert.match(r.stdout, /Use `raw` for any endpoint/);
+  assert.match(r.stdout, /serve these commands as MCP tools over stdio\.\n$/);
   assert.match(r.stdout, /--verbose/);
 });
 

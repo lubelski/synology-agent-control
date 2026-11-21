@@ -4,7 +4,7 @@ Onboarding for a future Claude session (or any human collaborator). What's here 
 
 ## What this is
 
-A fork of [`pvulgaris/synology-cli`](https://github.com/pvulgaris/synology-cli) by Peter Vulgaris, renamed from `syno` to `synology-agent-control`. The guidance below is his and still holds. Issue and PR numbers in this file refer to the upstream repository. Keep the attribution in `LICENSE`, `package.json`, and the README intact.
+A fork of [`pvulgaris/synology-cli`](https://github.com/pvulgaris/synology-cli) by Peter Vulgaris, renamed from `syno` to `synology-agent-control`, with an MCP server added. The guidance below is his and still holds. Issue and PR numbers in this file refer to the upstream repository. Keep the attribution in `LICENSE`, `package.json`, and the README intact.
 
 `synology-agent-control`, an agent-oriented CLI over a typed subset of the Synology Web API. DSM and read-only SRM are independent peer targets. It runs on your machine, not on either device.
 
@@ -13,6 +13,16 @@ A fork of [`pvulgaris/synology-cli`](https://github.com/pvulgaris/synology-cli) 
 Resolve and validate a command before loading target configuration or credentials. Every handler receives exactly one target and one client. There is deliberately no command that fans out across both devices: a cross-device digest existed and was removed, because it merged updates you can apply with updates that are detection-only, and it needed a second dispatch path whose "nothing configured" case reported success. Compose the per-target commands instead.
 
 Response shapes are deliberately frozen. `skills/synology/SKILL.md` maps audit findings to specific fields (`firewall_enabled`, `web_hardening.https_redirect`, `smb.min_protocol`), so reshaping a tool's output silently breaks those rules.
+
+## MCP server
+
+`synology-agent-control mcp [--read-only]` serves the registry as MCP tools over stdio (`src/mcp.ts`). It defines no commands. Each tool is generated from a `COMMANDS` entry, its input schema comes from `commandInputs`, and it runs through `runCommand` in `src/run.ts`, the same path `cli.ts` takes. Add or change a command in `commands.ts` only, and give each new argument and flag a line in `describe`.
+
+- `confirm: true` maps to `--yes`, and the gate is still `requiresConfirmation`.
+- Read-only mode filters on `mutating` and refuses any `raw` call the gate would ask to confirm. It does not set `TargetConfig.readOnly`, because the client-level policy is stricter than the gate and would refuse read commands that use POST or a write-shaped method name.
+- stdout carries only protocol traffic. Write progress and errors to stderr, never with `console.log`.
+- The server is long-lived, which the CLI never was. Calls run one at a time, and `runCommand` restores `NODE_TLS_REJECT_UNAUTHORIZED` for a target that did not opt out, so one target's certificate skip cannot carry over to the other.
+- A drift verdict (CLI exit 3) is returned as an ordinary result. The JSON carries `ok: false`.
 
 ## Session cache and locking
 
